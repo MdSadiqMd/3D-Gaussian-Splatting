@@ -1,0 +1,40 @@
+default:
+  just --list
+
+# Install dependencies
+install:
+    uv sync
+
+# Download Mip-NeRF 360 + parse COLMAP SfM (set SCENE=... to pick a scene)
+prepare:
+    uv run python prepare_data.py
+
+# Train 3D gaussians and render novel views
+train:
+    uv run python main.py
+
+# Full pipeline: install deps + download/prepare data + train + render
+all: install prepare train
+
+# Type check
+check:
+    uv run pyright main.py prepare_data.py
+
+# Format code
+fmt:
+    uv run ruff format .
+
+# Lint code
+lint:
+    uv run ruff check .
+
+# Clean generated renders and caches
+clean:
+    rm -rf novel_views/*.png
+    rm -rf __pycache__
+    rm -rf .ruff_cache
+
+# Clean everything including trained gaussians and downloaded data
+clean-all: clean
+    rm -rf trained_gaussians out_colmap camera_trajectories
+    rm -rf kitchen 360_v2.zip
