@@ -1,7 +1,15 @@
 [project]
 name = "speedy-splat"
 version = "0.1.0"
-description = "Add your description here"
+description = "Fast 3D Gaussian Splatting with Sparse Pixels and Sparse Primitives"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "matplotlib>=3.11.0",
+    "numpy>=2.5.1",
+    "pillow>=11.0.0",
+    "ruff>=0.15.20",
+    "scipy>=1.15.0",
+    "torch>=2.13.0",
+    "tqdm>=4.68.4",
+]
