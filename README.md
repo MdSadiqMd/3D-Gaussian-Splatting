@@ -27,3 +27,13 @@ PyTorch implementations of 3D Gaussian Splatting for real-time radiance field re
    **Key insight**: The viewspace-position gradient `(dL/dμ²D)` that 3D-GS uses for pruning is an indirect proxy — many converged gaussians still have non-zero position gradients, making it hard to separate important from unimportant gaussians. Speedy-Splat's `(dL/dg)^2` score directly measures each gaussian's pixel-level contribution to the loss, so pruning removes only gaussians that genuinely don't matter.
 
    **Note on this implementation**: Same pure-PyTorch rasterizer as the 3dgs implementation. SnugBox and AccuTile are implemented. The pruning mechanism uses a `PruneGradAccum` autograd Function that hooks into the tile loop's 2D gaussian value computation, accumulating `(dL/dg)²` per gaussian via `scatter_add_` in the backward pass. Trains on Apple Silicon (MPS) at DOWNSAMPLE=8 in ~1.5h for 7K iters, ~4h for 30K iters.
+
+3. **[spherical-voronoi/](./spherical-voronoi/)** - Spherical Voronoi appearance modeling
+
+   Replaces the degree-3 spherical-harmonic color with a *soft Voronoi partition of the sphere*: each gaussian has `K=8` directional sites `s_k` and `K` colors `c_k` (48 floats/gaussian — the same parameter budget as degree-3 SH). The color at view direction `ω` is a softmax-weighted blend over the sites — `w_k(ω) = softmax(s_k · ω)_k`, `f_SV(ω) = Σ_k w_k(ω) · c_k`, sigmoid-decoded to RGB. The geometry, tile rasterizer, adaptive density control, and SfM data pipeline are identical to `3dgs`; only the color model differs.
+
+   Paper: https://arxiv.org/abs/2512.14180
+
+   **Key insight**: In the weighted-SV variant, each site vector encodes both its direction and its temperature via its norm (`s_k = τ_k · ŝ_k`). Small norms keep the partition smooth (low-frequency colors, easy optimization); large norms sharpen it toward a hard Voronoi tessellation that captures sharp specular glints SH cannot represent.
+
+   **Note on this implementation**: Same pure-PyTorch rasterizer as the other projects, with no `torch.linalg.eigh` — the screen-space covariance is diagonal-dilated (`+0.3·I`) and its major eigenvalue for tiling is computed in closed form, so `render()` runs on CPU, CUDA, and MPS. Measured throughput on Apple Silicon (MPS) at DOWNSAMPLE=8 is roughly 1 iteration/s at 40k gaussians. The paper's reflection pipeline is not implemented; this covers the radiance-modeling setting.
